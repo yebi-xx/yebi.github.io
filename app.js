@@ -460,8 +460,19 @@
     window.scrollTo(0, 0);
   }
 
-  /* ---------- 参企名录（research 索引卡） ---------- */
-  function renderAuthors() {
+  /* ============================================================
+     参企名录 · 星空星座页（STARRY GUESTBOOK）
+     ============================================================ */
+  var starData = [];      // {name,x,y,size,count,events,works}
+  var starNeighbors = {}; // name -> [names]
+  var lastTapStar = null;
+
+  function seededRand(i) {
+    var x = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+    return x - Math.floor(x);
+  }
+
+  function buildStarData() {
     var map = {};
     D.events.forEach(function (e) {
       e.works.forEach(function (w) {
@@ -470,34 +481,141 @@
         map[w.author].works.push({ ev: e, w: w });
       });
     });
-    var list = Object.keys(map).map(function (k) { return map[k]; });
-    list.sort(function (a, b) { return b.works.length - a.works.length || a.author.localeCompare(b.author, 'zh'); });
+    var names = Object.keys(map).sort();
+    // 邻星：共同参加过同一场活动
+    var byEvent = {};
+    names.forEach(function (n) {
+      var evs = {};
+      map[n].works.forEach(function (x) { evs[x.ev.id] = 1; });
+      Object.keys(evs).forEach(function (eid) {
+        (byEvent[eid] = byEvent[eid] || []).push(n);
+      });
+    });
+    names.forEach(function (n) {
+      var set = {};
+      map[n].works.forEach(function (x) {
+        (byEvent[x.ev.id] || []).forEach(function (m) { if (m !== n) set[m] = 1; });
+      });
+      starNeighbors[n] = Object.keys(set);
+    });
+    // 固定布局（种子随机，每次进入一致）
+    starData = names.map(function (n, i) {
+      var count = map[n].works.length;
+      return {
+        name: n,
+        x: 4 + seededRand(i * 2 + 1) * 90,
+        y: 10 + seededRand(i * 2 + 2) * 76,
+        size: Math.min(2 + count * 1.4, 8),
+        count: count,
+        works: map[n].works
+      };
+    });
+  }
 
-    app.innerHTML = grainHtml() +
-      '<div class="research">' +
-      navHtml('authors') +
-      '<div class="rbody" style="padding-top:36px">' +
-      '<a class="rback" href="#/">← 返回检索台</a>' +
-      '<div class="rwork-head"><span class="rwh-no">◎</span>' +
-      '<h2>参企老师名录</h2>' +
-      '<div class="rwh-meta">AUTHORS INDEX — ' + list.length + ' AUTHORS · 主页链接由产出所在博客推断，欢迎本人认领修正</div></div>' +
-      '<div class="rauthor-grid">' +
-      list.map(function (it, i) {
-        var a = authorOf(it.author);
-        return '<div class="rauthor-card" onclick="openAuthor(' + i + ')">' +
-          '<span class="ra-hole"></span>' +
-          '<div class="ra-name">' + esc(it.author) +
-          (it.works.length > 1 ? '<b>' + it.works.length + '</b>' : '') + '</div>' +
-          '<div class="ra-line"></div>' +
-          '<a class="ra-home" href="' + (a ? a.homepage : '#') + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">⌂ 老师主页 ↗</a>' +
-          '<div class="ra-evs">' + it.works.map(function (x) { return esc(x.ev.title); }).join(' / ') + '</div>' +
-          '</div>';
-      }).join('') +
-      '</div></div>' + footerHtml(false) + '</div>' + lightboxHtml();
+  function renderAuthors() {
+    buildStarData();
+    lastTapStar = null;
 
-    window.__authorList = list;
+    var starsHtml = starData.map(function (s, i) {
+      return '<div class="star" data-i="' + i + '" style="left:' + s.x + '%;top:' + s.y + '%">' +
+        '<span class="star-dot" style="width:' + s.size + 'px;height:' + s.size + 'px;animation-delay:' + (seededRand(i * 3 + 5) * 4).toFixed(2) + 's"></span>' +
+        '<span class="star-name">' + esc(s.name) + '</span>' +
+        '</div>';
+    }).join('');
+
+    app.innerHTML =
+      '<div class="starry">' +
+      '<div class="st-menu">' +
+      '<a href="#/">[ 桌面 ]</a>' +
+      '<span class="st-count">' + starData.length + ' STARS</span>' +
+      '</div>' +
+      '<div class="st-sky" id="stSky">' +
+      '<svg class="st-lines" id="stLines" preserveAspectRatio="none"></svg>' +
+      starsHtml +
+      '</div>' +
+      '<div class="st-gwin" id="stGwin"></div>' +
+      '<div class="st-foot">they lit the night, one by one.</div>' +
+      '</div>' + lightboxHtml();
+
+    /* 悬停/点按交互（事件委托） */
+    var sky = document.getElementById('stSky');
+    var lines = document.getElementById('stLines');
+    var gwin = document.getElementById('stGwin');
+
+    function clearAll() {
+      lines.innerHTML = '';
+      var act = sky.querySelectorAll('.star.active, .star.linked');
+      for (var k = 0; k < act.length; k++) act[k].classList.remove('active', 'linked');
+    }
+
+    function lightStar(el) {
+      clearAll();
+      var s = starData[+el.getAttribute('data-i')];
+      el.classList.add('active');
+      var rect = sky.getBoundingClientRect();
+      var x1 = s.x / 100 * rect.width, y1 = s.y / 100 * rect.height;
+      var d = '';
+      starNeighbors[s.name].forEach(function (nb) {
+        var j = -1;
+        for (var t = 0; t < starData.length; t++) if (starData[t].name === nb) { j = t; break; }
+        if (j < 0) return;
+        var ns = starData[j];
+        var x2 = ns.x / 100 * rect.width, y2 = ns.y / 100 * rect.height;
+        d += 'M' + x1.toFixed(1) + ',' + y1.toFixed(1) + ' L' + x2.toFixed(1) + ',' + y2.toFixed(1) + ' ';
+        sky.children[j + 1] && sky.children[j + 1].classList && sky.children[j + 1].classList.add('linked');
+      });
+      lines.innerHTML = '<path d="' + d + '" fill="none" stroke="#9aa0a8" stroke-width="1" stroke-dasharray="4 5" opacity=".55"/>';
+    }
+
+    function openGuestWin(el) {
+      var s = starData[+el.getAttribute('data-i')];
+      var a = authorOf(s.name);
+      var evCount = {};
+      s.works.forEach(function (x) { evCount[x.ev.title] = 1; });
+      var evs = Object.keys(evCount);
+      gwin.innerHTML =
+        '<div class="gw-bar"><span class="gw-file">' + esc(s.name) + '</span>' +
+        '<span class="gw-btns"><i></i><i></i><i class="wx" onclick="closeGuestWin()"></i></span></div>' +
+        '<div class="gw-body">' +
+        '<div class="gw-stats">' + s.works.length + ' WORKS · ' + evs.length + ' EVENTS</div>' +
+        '<div class="gw-evs">' + evs.map(esc).join(' · ') + '</div>' +
+        (a && a.homepage ? '<a class="gw-home" href="' + a.homepage + '" target="_blank" rel="noopener">⌂ 老师主页 ↗</a>' : '') +
+        '<div class="gw-works">' +
+        s.works.map(function (x) {
+          var t = x.w.title || (x.w.song ? '♪ ' + x.w.song : (x.w.time ? x.w.time + ' 时刻产出' : '（未命名）'));
+          return '<a class="gw-work" href="' + (x.w.url || '#') + '" target="_blank" rel="noopener"' + (x.w.url ? '' : ' onclick="event.preventDefault()" style="opacity:.45"') + '>' +
+            '<span class="gw-t">' + esc(t) + '</span>' +
+            '<span class="gw-c">' + esc(x.ev.title.replace('瓷右产出沙龙 · ', '').replace(' · 瓷右', '')) + (x.w.cp ? ' · ' + esc(x.w.cp) : '') + '</span></a>';
+        }).join('') +
+        '</div></div>';
+      gwin.classList.add('open');
+    }
+
+    sky.addEventListener('mouseover', function (e) {
+      var el = e.target.closest ? e.target.closest('.star') : null;
+      if (el && !el.classList.contains('active')) lightStar(el);
+    });
+    sky.addEventListener('mouseleave', clearAll);
+    sky.addEventListener('click', function (e) {
+      var el = e.target.closest ? e.target.closest('.star') : null;
+      if (!el) return;
+      /* 手机：第一次点=亮起连线，第二次点=开窗；桌面直接开窗 */
+      if (window.innerWidth <= 860 && lastTapStar !== el) {
+        lastTapStar = el;
+        lightStar(el);
+        return;
+      }
+      lastTapStar = null;
+      lightStar(el);
+      openGuestWin(el);
+    });
     window.scrollTo(0, 0);
   }
+
+  window.closeGuestWin = function () {
+    var g = document.getElementById('stGwin');
+    if (g) g.classList.remove('open');
+  };
 
   /* ---------- 全局函数 ---------- */
   window.openAuthor = function (i) {

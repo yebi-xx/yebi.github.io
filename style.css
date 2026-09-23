@@ -1367,3 +1367,104 @@ h1, h2, h3 { font-family: var(--black); font-weight: 900; }
   .ac-foot { left: 44px; right: 20px; }
   .ac-img { max-width: 100%; }
 }
+
+/* ============================================================
+   STARRY GUESTBOOK 星空名录（#0B0B0D · hover 探索 · 动效≤400ms）
+   ============================================================ */
+.starry { position: relative; min-height: 100vh; background: #0B0B0D; overflow: hidden; }
+.st-menu {
+  position: relative; z-index: 20;
+  padding: 12px 24px; border-bottom: 1px solid #1e1e24;
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: 2px;
+  display: flex; gap: 20px; align-items: center;
+}
+.st-menu a { color: #6a6a75; }
+.st-menu a:hover { color: #e8e8ec; }
+.st-count { margin-left: auto; color: #4a4a52; font-size: 10px; }
+
+.st-sky { position: absolute; inset: 0; z-index: 1; }
+.st-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+.st-lines path { transition: opacity .3s ease; }
+
+/* 星星 */
+.star { position: absolute; transform: translate(-50%, -50%); cursor: pointer; z-index: 3; }
+.star-dot {
+  display: block; margin: 0 auto; background: #8a8f98; border-radius: 50%;
+  transition: background .3s ease, box-shadow .3s ease, transform .3s ease;
+  animation: stTw 3.6s ease-in-out infinite alternate;
+}
+@keyframes stTw { from { opacity: .45; } to { opacity: 1; } }
+.star-name {
+  display: block; margin-top: 5px; text-align: center;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .5px;
+  color: rgba(200,203,210,.6);
+  opacity: 0; transition: opacity .3s ease, color .3s ease;
+  white-space: nowrap; pointer-events: none;
+}
+@media (min-width: 861px) {
+  .star:nth-child(4n+1) .star-name { opacity: .6; }   /* 桌面初始稀疏显示，悬停补全 */
+}
+.star:hover .star-name, .star.active .star-name, .star.linked .star-name { opacity: 1; }
+.star:hover .star-dot, .star.active .star-dot {
+  background: #f0f1f4; box-shadow: 0 0 10px rgba(230,233,240,.8);
+  transform: scale(1.25);
+}
+.star.linked .star-dot { background: #c9ccd4; }
+.star.linked .star-name { color: rgba(230,233,240,.9); }
+
+/* 页脚 */
+.st-foot {
+  position: absolute; z-index: 5; left: 0; right: 0; bottom: 16px;
+  text-align: center; font-family: var(--serif); font-style: italic;
+  font-size: 12px; letter-spacing: 2px; color: #4a4a52; pointer-events: none;
+}
+
+/* Win95 小窗（右侧滑出，≤400ms） */
+.st-gwin {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 60;
+  width: min(360px, 92vw);
+  background: #101014; border-left: 1px solid #3a3a42;
+  box-shadow: inset 0 0 0 1px #0B0B0D, -18px 0 50px rgba(0,0,0,.5);
+  transform: translateX(102%);
+  transition: transform .35s ease-out;
+  display: flex; flex-direction: column;
+}
+.st-gwin.open { transform: translateX(0); }
+.gw-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; background: #16161b; border-bottom: 1px solid #2c2c33;
+  flex-shrink: 0;
+}
+.gw-file { font-family: var(--mono); font-size: 12.5px; letter-spacing: 1.5px; color: #d8dade; }
+.gw-file::before { content: "▤ "; color: #6a6a75; }
+.gw-btns { display: flex; gap: 4px; }
+.gw-btns i {
+  width: 11px; height: 11px; border: 1px solid #6a6a75; background: #101014;
+  display: inline-block; cursor: pointer;
+}
+.gw-btns i.wx { position: relative; }
+.gw-btns i.wx::after {
+  content: "×"; position: absolute; inset: 0; text-align: center;
+  font-size: 9px; line-height: 10px; color: #9a9aa4; font-family: var(--mono);
+}
+.gw-btns i.wx:hover { border-color: #c9c9cf; }
+.gw-body { padding: 18px 18px 20px; overflow-y: auto; font-family: var(--mono); color: #a9a9b2; }
+.gw-stats { font-size: 10.5px; letter-spacing: 2px; color: #6a6a75; }
+.gw-evs { margin-top: 8px; font-size: 11.5px; line-height: 1.9; color: #8a8e96; }
+.gw-home {
+  display: inline-block; margin-top: 12px; font-size: 11.5px; letter-spacing: 1px;
+  color: #c9c9cf; border-bottom: 1px dashed #565b63; padding-bottom: 2px;
+}
+.gw-home:hover { color: #fff; }
+.gw-works { margin-top: 16px; border-top: 1px dashed #26262c; padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.gw-work { display: block; text-decoration: none; }
+.gw-work:hover .gw-t { color: #e8e8ec; }
+.gw-t { display: block; font-size: 12.5px; color: #b9bcc2; line-height: 1.5; }
+.gw-c { display: block; font-size: 10px; letter-spacing: 1px; color: #5a5e66; margin-top: 2px; }
+
+/* 手机：名字默认隐藏，点星才亮 */
+@media (max-width: 860px) {
+  .star-name { opacity: 0; }
+  .star.active .star-name, .star.linked .star-name { opacity: 1; }
+  .st-foot { font-size: 11px; }
+}
