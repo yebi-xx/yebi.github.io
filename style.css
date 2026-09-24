@@ -958,12 +958,13 @@ h1, h2, h3 { font-family: var(--black); font-weight: 900; }
   max-width: 340px;
   will-change: transform;
 }
-.dlogo { display: flex; align-items: baseline; gap: 0.4em; }
+.dlogo { display: flex; align-items: flex-start; gap: 0.4em; font-size: clamp(44px, 6.5vw, 84px); }
 .dlogo h1 {
   font-family: var(--mono); font-weight: 700;
-  font-size: clamp(44px, 6.5vw, 84px);
-  letter-spacing: 8px; color: #e8e8ec; line-height: 1.1;
+  font-size: 1em;
+  letter-spacing: 0.14em; color: #e8e8ec; line-height: 1.16;
 }
+.dlogo h1 span { display: block; }
 .dsub {
   margin-top: 20px;
   font-family: var(--serif); font-style: italic;
@@ -1709,6 +1710,7 @@ h1, h2, h3 { font-family: var(--black); font-weight: 900; }
 /* 火漆印：currentColor 70% 透明度暖白，基线对齐，-3°，仅此一处 */
 .dlogo-icon.seal {
   flex-shrink: 0;
+  margin-top: calc(0.58em - 15px);   /* 垂直对齐首行"一"字 */
   opacity: .7;
   transform: rotate(-3deg);
   transform-origin: 50% 88%;

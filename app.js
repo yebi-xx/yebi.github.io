@@ -187,7 +187,7 @@
       '<span class="dm-right">EST. BY 耶比大雄 · AMOR FATI</span>' +
       '</div>' +
       '<div class="dleft">' +
-      '<div class="dlogo">' + sealSvg() + '<h1>一期一會</h1></div>' +
+      '<div class="dlogo">' + sealSvg() + '<h1><span>一期</span><span>一會</span></h1></div>' +
       '<div class="dsub">After the Curtain Call</div>' +
       '<div class="ddash"><em></em><span>✦</span></div>' +
       '<div class="damor">' + esc(D.site.subtitle) + '<span> — ' + esc(D.site.subtitleNote) + '</span></div>' +
@@ -658,21 +658,16 @@
       var rect = sky.getBoundingClientRect();
       var x1 = s.x / 100 * rect.width, y1 = s.y / 100 * rect.height;
       var d = '';
-      starNeighbors[s.name].forEach(function (nb, k) {
+      starNeighbors[s.name].forEach(function (nb) {
         var j = -1;
         for (var t = 0; t < starData.length; t++) if (starData[t].name === nb) { j = t; break; }
         if (j < 0) return;
         var ns = starData[j];
         var x2 = ns.x / 100 * rect.width, y2 = ns.y / 100 * rect.height;
-        /* 直角折线走线：先横后纵，电路板风格，避免斜线缠绕；中线按序号微错位防重叠 */
-        var midY = (y1 + y2) / 2 + ((k % 3) - 1) * 10;
-        d += 'M' + x1.toFixed(1) + ',' + y1.toFixed(1) +
-             ' L' + x1.toFixed(1) + ',' + midY.toFixed(1) +
-             ' L' + x2.toFixed(1) + ',' + midY.toFixed(1) +
-             ' L' + x2.toFixed(1) + ',' + y2.toFixed(1) + ' ';
+        d += 'M' + x1.toFixed(1) + ',' + y1.toFixed(1) + ' L' + x2.toFixed(1) + ',' + y2.toFixed(1) + ' ';
         sky.children[j + 1] && sky.children[j + 1].classList && sky.children[j + 1].classList.add('linked');
       });
-      lines.innerHTML = '<path d="' + d + '" fill="none" stroke="#9aa0a8" stroke-width="1" stroke-dasharray="4 5" stroke-linejoin="round" opacity=".45"/>';
+      lines.innerHTML = '<path d="' + d + '" fill="none" stroke="#9aa0a8" stroke-width="1" stroke-dasharray="4 5" opacity=".5"/>';
     }
 
     function openGuestWin(el) {
