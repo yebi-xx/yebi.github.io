@@ -152,7 +152,7 @@
     return D.events.filter(function (ev) { return ev.category === cat; })
       .map(function (ev) {
         var idx = String(D.events.indexOf(ev) + 1).padStart(2, '0');
-        return '<div class="wrow" onclick="openEnvelope(\'' + ev.slug + '\')">' +
+        return '<div class="wrow" onclick="openFile(\'' + ev.slug + '\', this)">' +
           '<span class="w-idx">' + idx + '</span>' +
           '<span class="w-name">' + esc(ev.title) + '</span>' +
           '<span class="w-items">' + ev.works.length + ' ITEMS</span></div>';
@@ -205,14 +205,13 @@
       '<div class="dfoot">本站收录由耶比大雄主催的瓷右企划产出归档。产出均保留原帖直达链接，请多多去原帖点赞评论支持老师。</div>' +
       '</div>' + lightboxHtml();
 
-    makeStars();
+    makeStarsIn(document.getElementById('dstars'));
     initDrag();
     window.scrollTo(0, 0);
   }
 
   /* 星点：细碎 + 闪烁 */
-  function makeStars() {
-    var box = document.getElementById('dstars');
+  function makeStarsIn(box) {
     if (!box) return;
     var n = 90, html = '';
     for (var i = 0; i < n; i++) {
@@ -362,101 +361,99 @@
     return '<div class="ac-tag"><span>' + label + '</span><i></i>' + v + '</div>';
   }
 
+  /* ============================================================
+     活动子页面 · 深色纸质档案终端（ARCHIVAL TERMINAL，全活动共用）
+     ============================================================ */
   function renderEventBrut(ev) {
-    var cps = cpOptions(ev);
+    var counts = { 'ALL': ev.works.length };
+    ev.works.forEach(function (w) {
+      var c = w.cp || '无CP';
+      counts[c] = (counts[c] || 0) + 1;
+    });
+    var cps = ['ALL'].concat(Object.keys(counts).filter(function (k) { return k !== 'ALL'; }));
     var filtered = worksFiltered(ev);
-    var evNo = String(D.events.indexOf(ev) + 1).padStart(3, '0');
+    var byNo = {};
+    ev.works.forEach(function (w) { byNo[w.no] = w; });
 
-    var cardsHtml = '', lastGroup = null;
-    filtered.forEach(function (w, i) {
-      var gkey = (w.day ? 'D' + w.day : '') + '|' + (w.group || '');
-      if (gkey !== lastGroup) {
-        lastGroup = gkey;
-        if (w.day) cardsHtml += '<div class="ac-day">' + esc(w.day) + '</div>';
-        if (w.group) cardsHtml += '<div class="ac-group">' + esc(w.group) + '</div>';
+    /* FULL INDEX 登记簿 */
+    var rowsHtml = '', lastStrip = null;
+    filtered.forEach(function (w) {
+      var stripKey = w.day ? ('D|' + w.day) : (w.group ? ('G|' + w.group) : null);
+      if (stripKey && stripKey !== lastStrip) {
+        lastStrip = stripKey;
+        rowsHtml += '<div class="tr-strip">' + esc(w.day || w.group) + '</div>';
       }
-      var no = String(i + 1).padStart(2, '0');
-      var hasTitle = !!w.title;
-      var titleText = hasTitle ? w.title : (w.song ? '♪ ' + w.song : (w.time ? w.time + ' · ' + (w.author || '匿名') : '未命名'));
-
-      /* 左栏 TAGS */
-      var tags = '';
-      tags += tagRow('TIME', w.time || null);
-      tags += tagRow('FORM', w.form || '文');
-      tags += tagRow('CP', w.cp || null);
-      if (w.paro) tags += tagRow('PARO', w.paro);
-      if (w.flags && w.flags['三创']) tags += tagRow('TYPE', '三创');
-      if (w.flags && w.flags['果设']) tags += tagRow('TYPE', '果设');
-      if (w.flags && w.flags.bg) tags += tagRow('TYPE', 'BG');
-      tags += tagRow('AUTHOR', w.author || '匿名', authorOf(w.author) != null, authorHomepage(w.author));
-      if (w.song && hasTitle) tags += tagRow('SONG', w.song);
-      if (w.note) tags += tagRow('NOTE', w.note);
-      var linkBtn = w.url
-        ? '<a class="ac-linkbtn" href="' + w.url + '" target="_blank" rel="noopener">OPEN ORIGINAL ↗</a>'
-        : '<span class="ac-linkbtn dead">ORIGINAL LOST</span>';
-
-      /* 右栏 TEXT */
-      var textCol;
-      if (w.excerpt) {
-        textCol = '<div class="ac-text serif">' + esc(w.excerpt) + '</div>' +
-          '<span class="excerpt-toggle" onclick="toggleExcerpt(this)">展开摘录 ▾</span>';
-      } else if (w.preview) {
-        textCol = '<div class="ac-img" onclick="openLightbox(this)"><img src="' + w.preview + '" alt="预览" loading="lazy"></div>' +
-          '<div class="ac-imgnote">预览为图片 · 文字提取待补</div>';
-      } else {
-        textCol = '<div class="ac-empty">（无预览 · 点击左侧 OPEN ORIGINAL 查看）</div>';
-      }
-
-      cardsHtml +=
-        '<article class="acard">' +
-        '<span class="ac-hole" style="top:16%"></span>' +
-        '<span class="ac-hole" style="top:32%"></span>' +
-        '<span class="ac-hole" style="top:50%"></span>' +
-        '<span class="ac-hole" style="top:68%"></span>' +
-        '<span class="ac-hole" style="top:84%"></span>' +
-        '<div class="ac-col ac-left">' +
-        '<div class="ac-head"><span>TAGS</span><em>档案</em></div>' +
-        '<div class="ac-title">' + esc(titleText) + '</div>' +
-        tags + linkBtn +
-        '</div>' +
-        '<div class="ac-divider"></div>' +
-        '<div class="ac-col ac-right">' +
-        '<div class="ac-head"><span>TEXT</span><em>正文</em></div>' +
-        textCol +
-        '</div>' +
-        '<div class="ac-foot"><span>CP 索引 // ' + esc(w.cp || '无') + '</span><i></i><span>NO.' + no + ' / ' + filtered.length + '</span><i></i><span>CY-AR-' + evNo + '</span></div>' +
-        '</article>';
+      var no = String(w.no).padStart(2, '0');
+      var main = w.title
+        ? '《' + w.title + '》'
+        : (w.song ? '♪ ' + w.song : (w.time ? w.time + ' · ' + (w.author || '匿名') : (w.author || '匿名')));
+      rowsHtml += '<div class="tr-row" data-no="' + w.no + '">' +
+        '<span class="tr-star">✦</span>' +
+        '<span class="tr-cp">CP 索引 // ' + esc(w.cp || '—') + '</span>' +
+        '<span class="tr-no">NO.' + no + ' / ' + esc(ev.archive_prefix) + '-AR-' + no + '</span>' +
+        '<span class="tr-main">' + esc(main) + '</span>' +
+        '<span class="tr-lead"><i></i></span>' +
+        '<span class="tr-form">' + esc(w.form) + '</span>' +
+        '</div>';
     });
 
+    var drawersHtml = cps.map(function (c) {
+      var active = (c === 'ALL' && state.cp === '全部') || (c === state.cp);
+      return '<button class="tr-drawer' + (active ? ' active' : '') + '" data-cp="' + esc(c) + '">' +
+        '<span>' + esc(c) + '</span><b>' + counts[c] + '</b></button>';
+    }).join('');
+    var selectHtml = cps.map(function (c) {
+      var sel = (c === 'ALL' && state.cp === '全部') || (c === state.cp);
+      return '<option value="' + esc(c) + '"' + (sel ? ' selected' : '') + '>' + esc(c) + ' (' + counts[c] + ')</option>';
+    }).join('');
+
     app.innerHTML =
-      '<div class="slate">' +
-      '<div class="sl-head">' +
-      '<a class="sl-back" href="#/">← 返回桌面</a>' +
-      '<div class="sl-titlebox">' +
-      '<div class="sl-no">FILE CY-AR-' + evNo + ' — ' + esc(ev.category) + '</div>' +
-      '<h2>' + esc(ev.title) + '</h2>' +
-      '<div class="sl-meta">「 ' + esc(ev.tagline) + ' 」</div>' +
+      '<div class="term">' +
+      '<div class="term-stars" id="tstars"></div>' +
+      '<div class="term-bar">' +
+      '<span class="tb-left">一期一會 // ARCHIVE TERMINAL</span>' +
+      '<span class="tb-mid">' + esc(ev.source_file) + ' &gt; ' + ev.event_no + '_' + esc(ev.event_name) + '</span>' +
+      '<span class="tb-right">ARCHIVED: ' + ev.items_count + ' · LOST: ' + ev.lost_count + '</span>' +
       '</div>' +
-      '<div class="sl-tools">' +
-      '<div class="sl-chips">' + cps.map(function (c) {
-        return '<button class="sl-chip' + (c === state.cp ? ' active' : '') + '" data-cp="' + esc(c) + '">' + esc(c) + '</button>';
-      }).join('') + '</div>' +
-      '<div class="sl-search"><input id="searchInput" placeholder="搜索标题 / 作者 / paro…" value="' + esc(state.q) + '"></div>' +
-      '<div class="sl-count">' + filtered.length + ' / ' + ev.works.length + ' RECORDS</div>' +
-      '</div>' +
-      '</div>' +
-      '<div class="sl-list">' +
-      (cardsHtml || '<div class="sl-none">没有符合条件的产出，换个筛选试试～</div>') +
-      '<div class="sl-scroll">SCROLL DOWN ↓</div>' +
+      '<div class="term-board" id="termBoard">' +
+      '<header class="tb-head">' +
+      '<div class="tb-headinfo">' + esc(ev.event_name_en) + ' / ' + (ev.date ? esc(ev.date) : '—') + ' / ' + ev.items_count + ' ITEMS / ' + ev.guests_count + ' GUESTS</div>' +
+      '<h1>' + esc(ev.event_name) + '</h1>' +
+      (ev.theme_quote ? '<div class="tb-note"><span class="tb-tape"></span>' + esc(ev.theme_quote) + '</div>' : '') +
+      '</header>' +
+      '<div class="tr-index">FULL INDEX — ' + filtered.length + ' RECORDS</div>' +
+      (rowsHtml ? '<div class="tr-list" id="trList">' + rowsHtml + '</div>' : '<div class="tr-empty">没有符合条件的记录</div>') +
+      '<div class="tr-drawers">' + drawersHtml + '</div>' +
+      '<select class="tr-select" id="cpSelect">' + selectHtml + '</select>' +
+      '<div class="tb-foot" onclick="backToDesktop()">BACK TO DESKTOP ←</div>' +
       '</div>' +
       lightboxHtml();
 
-    var chips = document.querySelectorAll('.sl-chip');
-    for (var j = 0; j < chips.length; j++) {
-      chips[j].onclick = function () { state.cp = this.getAttribute('data-cp'); renderEvent(ev.slug); };
+    /* 交互 */
+    var listEl = document.getElementById('trList');
+    if (listEl) {
+      listEl.addEventListener('click', function (e) {
+        var row = e.target.closest ? e.target.closest('.tr-row') : null;
+        if (!row) return;
+        var w = byNo[+row.getAttribute('data-no')];
+        if (w) openWorkWin(ev, w);
+      });
     }
-    var si = document.getElementById('searchInput');
-    si.oninput = function () { state.q = this.value; renderEvent(ev.slug); var el = document.getElementById('searchInput'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); };
+    var drawers = document.querySelectorAll('.tr-drawer');
+    for (var j = 0; j < drawers.length; j++) {
+      drawers[j].onclick = function () {
+        state.cp = this.getAttribute('data-cp') === 'ALL' ? '全部' : this.getAttribute('data-cp');
+        renderEvent(ev.slug);
+      };
+    }
+    var sel = document.getElementById('cpSelect');
+    if (sel) {
+      sel.onchange = function () {
+        state.cp = this.value === 'ALL' ? '全部' : this.value;
+        renderEvent(ev.slug);
+      };
+    }
+    makeStarsIn(document.getElementById('tstars'));
     window.scrollTo(0, 0);
   }
 
@@ -555,16 +552,21 @@
       var rect = sky.getBoundingClientRect();
       var x1 = s.x / 100 * rect.width, y1 = s.y / 100 * rect.height;
       var d = '';
-      starNeighbors[s.name].forEach(function (nb) {
+      starNeighbors[s.name].forEach(function (nb, k) {
         var j = -1;
         for (var t = 0; t < starData.length; t++) if (starData[t].name === nb) { j = t; break; }
         if (j < 0) return;
         var ns = starData[j];
         var x2 = ns.x / 100 * rect.width, y2 = ns.y / 100 * rect.height;
-        d += 'M' + x1.toFixed(1) + ',' + y1.toFixed(1) + ' L' + x2.toFixed(1) + ',' + y2.toFixed(1) + ' ';
+        /* 直角折线走线：先横后纵，电路板风格，避免斜线缠绕；中线按序号微错位防重叠 */
+        var midY = (y1 + y2) / 2 + ((k % 3) - 1) * 10;
+        d += 'M' + x1.toFixed(1) + ',' + y1.toFixed(1) +
+             ' L' + x1.toFixed(1) + ',' + midY.toFixed(1) +
+             ' L' + x2.toFixed(1) + ',' + midY.toFixed(1) +
+             ' L' + x2.toFixed(1) + ',' + y2.toFixed(1) + ' ';
         sky.children[j + 1] && sky.children[j + 1].classList && sky.children[j + 1].classList.add('linked');
       });
-      lines.innerHTML = '<path d="' + d + '" fill="none" stroke="#9aa0a8" stroke-width="1" stroke-dasharray="4 5" opacity=".55"/>';
+      lines.innerHTML = '<path d="' + d + '" fill="none" stroke="#9aa0a8" stroke-width="1" stroke-dasharray="4 5" stroke-linejoin="round" opacity=".45"/>';
     }
 
     function openGuestWin(el) {
@@ -650,70 +652,94 @@
   };
 
   /* ============================================================
-     档案袋过渡页（ENVELOPE TRANSITION）
+     转场：深色档案纸从点击处展开（PAPER EXPAND, 350ms）
      ============================================================ */
   var suppressRoute = false;
 
-  window.openEnvelope = function (slug) {
-    var ev = null;
-    D.events.forEach(function (e) { if (e.slug === slug) ev = e; });
-    if (!ev) { location.hash = '#/event/' + slug; return; }
-    if (document.getElementById('envOverlay')) return;
-
-    var no = String(D.events.indexOf(ev) + 1).padStart(3, '0');
-    var overlay = document.createElement('div');
-    overlay.className = 'env-overlay';
-    overlay.id = 'envOverlay';
-    overlay.innerHTML =
-      '<div class="envelope">' +
-      '<div class="env-inside"></div>' +
-      '<div class="env-flap"><span class="env-flap-left">YE BI</span><span class="env-flap-right">' + esc(D.site.subtitle) + '</span></div>' +
-      /* 棉线绕扣 + 吊牌 */
-      '<svg class="env-knot" viewBox="0 0 140 210" aria-hidden="true">' +
-      '<circle cx="70" cy="34" r="16" fill="#3a3a3e"/><circle cx="70" cy="34" r="6.5" fill="#C9C9C7"/>' +
-      '<circle cx="70" cy="100" r="16" fill="#3a3a3e"/><circle cx="70" cy="100" r="6.5" fill="#C9C9C7"/>' +
-      '<path class="env-string" d="M70 116 C 26 142, 46 178, 80 186" fill="none" stroke="#3a3a3e" stroke-width="2.5"/>' +
-      '<g class="env-tag" transform="translate(52 182) rotate(9)">' +
-      '<rect x="0" y="0" width="64" height="42" rx="2" fill="#3a3a3e"/>' +
-      '<circle cx="32" cy="8" r="3.5" fill="#C9C9C7"/>' +
-      '<text x="32" y="29" text-anchor="middle" font-size="12" fill="#C9C9C7" font-family="Songti SC, STSong, serif" letter-spacing="1">一期一會</text>' +
-      '</g></svg>' +
-      /* 收件人：活动标题（袋身中部，解线全程可见） */
-      '<div class="env-to"><span>TO //</span>' + esc(ev.title) + '</div>' +
-      /* 左下登记表 */
-      '<div class="env-form">' +
-      '<div class="ef-row"><span>Archive No.</span><i></i><b>' + no + '</b></div>' +
-      '<div class="ef-row"><span>Created By</span><i></i><b>\u8036\u6bd4</b></div>' +
-      '<div class="ef-row"><span>Category</span><i></i><b>' + esc(ev.category) + '</b></div>' +
-      '<div class="ef-row"><span>Period</span><i></i><b>2020\u20132026</b></div>' +
-      '<div class="ef-row"><span>Status</span><i></i><b>OPEN</b></div>' +
-      '</div>' +
-      /* 右下 */
-      '<div class="env-rightbox">' +
-      '<div class="er-icon"><svg width="34" height="26" viewBox="0 0 34 26"><rect x="1" y="1" width="32" height="24" fill="none" stroke="#3a3a3e" stroke-width="1.5"/><path d="M1 8 L17 16 L33 8" fill="none" stroke="#3a3a3e" stroke-width="1.5"/></svg><em>FULL ARCHIVE</em></div>' +
-      '<div class="er-arrow">\u2192</div>' +
-      '<div class="er-line">FROM STAGE<br>TO MEMORY</div>' +
-      '</div>' +
-      '<div class="env-hint">\u70b9\u51fb\u68c9\u7ebf \u00b7 \u5f00\u542f\u6863\u6848</div>' +
-      '</div>';
-    document.body.appendChild(overlay);
-
-    var done = false;
-    function untie() {
-      if (done) return;
-      done = true;
-      overlay.classList.add('untying');
-      setTimeout(function () {
-        renderEvent(slug);
-        suppressRoute = true;
-        location.hash = '#/event/' + slug;
-        overlay.classList.add('leaving');
-        setTimeout(function () { overlay.remove(); }, 650);
-      }, 1000);
-    }
-    overlay.querySelector('.env-knot').addEventListener('click', untie);
-    overlay.querySelector('.env-hint').addEventListener('click', untie);
+  window.openFile = function (slug, el) {
+    if (document.querySelector('.paper-fly')) return;
+    var rect = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+    var cx = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+    var cy = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
+    var fly = document.createElement('div');
+    fly.className = 'paper-fly';
+    fly.style.left = (cx - 40) + 'px';
+    fly.style.top = (cy - 14) + 'px';
+    document.body.appendChild(fly);
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { fly.classList.add('expand'); });
+    });
+    setTimeout(function () {
+      renderEvent(slug);
+      suppressRoute = true;
+      location.hash = '#/event/' + slug;
+      fly.classList.add('fade');
+      setTimeout(function () { fly.remove(); }, 320);
+    }, 360);
   };
+
+  window.backToDesktop = function () {
+    var board = document.getElementById('termBoard');
+    if (board) {
+      board.classList.add('leaving');
+      setTimeout(function () { location.hash = '#/'; }, 260);
+    } else {
+      location.hash = '#/';
+    }
+  };
+
+  window.closeWorkWin = function () {
+    var w = document.getElementById('workWin');
+    if (w) w.remove();
+  };
+
+  /* ---------- 纸质详情窗（单一实例，纸窗弹出 250ms / 章落纸震 200ms） ---------- */
+  function openWorkWin(ev, w) {
+    window.closeWorkWin();
+    var no = String(w.no).padStart(2, '0');
+    var titleText = w.title || (w.song ? '♪ ' + w.song : (w.time ? w.time + ' · ' + (w.author || '匿名') : '未命名'));
+
+    var leftCol;
+    if (w.form !== '文' && w.preview_url) {
+      leftCol = '<div class="ww-media"><img src="' + w.preview_url + '" alt="预览" loading="lazy"></div>';
+    } else if (w.excerpt) {
+      leftCol = '<div class="ww-quote">“ ' + esc(w.excerpt) + ' ”</div>';
+    } else if (w.preview_url) {
+      leftCol = '<div class="ww-media"><img src="' + w.preview_url + '" alt="预览" loading="lazy"></div>';
+    } else {
+      leftCol = '<div class="ww-noex">（无摘录 · 原文见原帖）</div>';
+    }
+
+    var win = document.createElement('div');
+    win.className = 'work-win';
+    win.id = 'workWin';
+    win.innerHTML =
+      '<div class="ww-bar">' +
+      '<span class="ww-file">WORK_' + esc(ev.archive_prefix) + '-AR-' + no + '.txt</span>' +
+      '<span class="ww-btns"><i></i><i></i><i class="wx" onclick="closeWorkWin()"></i></span>' +
+      '</div>' +
+      '<div class="ww-body">' +
+      '<div class="ww-left">' + leftCol + '</div>' +
+      '<div class="ww-right">' +
+      '<div class="ww-title">' + esc(titleText) + '</div>' +
+      '<div class="ww-meta">' +
+      '<div class="ww-row"><span>CP</span><i></i><b>' + esc(w.cp || '—') + '</b></div>' +
+      '<div class="ww-row"><span>FORM</span><i></i><b>' + esc(w.form) + '</b></div>' +
+      '<div class="ww-row"><span>AUTHOR</span><i></i><b>' + esc(w.author || '匿名') + '</b></div>' +
+      '<div class="ww-row"><span>NO.</span><i></i><b>' + no + '</b></div>' +
+      (w.paro ? '<div class="ww-row"><span>PARO</span><i></i><b>' + esc(w.paro) + '</b></div>' : '') +
+      (w.time && w.title ? '<div class="ww-row"><span>TIME</span><i></i><b>' + esc(w.time) + '</b></div>' : '') +
+      (w.note ? '<div class="ww-row"><span>NOTE</span><i></i><b>' + esc(w.note) + '</b></div>' : '') +
+      '</div>' +
+      '<a class="ww-open' + (w.original_lost ? ' dead' : '') + '" href="' + (w.original_url || '#') + '" target="_blank" rel="noopener"' + (w.original_lost ? ' onclick="event.preventDefault()"' : '') + '>OPEN ORIGINAL →</a>' +
+      '</div>' +
+      '<div class="ww-seals">' +
+      '<div class="ww-seal"><span>ARCHIVED</span>' + (w.archived_date ? '<em>' + esc(w.archived_date) + '</em>' : '') + '</div>' +
+      (w.original_lost ? '<div class="ww-lost">ORIGINAL LOST</div>' : '') +
+      '</div>' +
+      '</div>';
+    document.body.appendChild(win);
+  }
 
   /* ---------- 路由 ---------- */
   function route() {
