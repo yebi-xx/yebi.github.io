@@ -165,7 +165,7 @@
     }).join('');
 
     var eventWin = winHtml('winEvent', 'Event_.txt — 瓷右特别活动',
-      eventRows('特别活动'),
+      (eventRows('特别活动') + teaserRowHtml()),
       'left:2%;top:4%;width:56%;', 0);
     var salonWin = winHtml('winSalon', 'Salon_.txt — 瓷右产出沙龙',
       eventRows('产出沙龙'),
@@ -184,7 +184,7 @@
       '<span class="dm-logo">一期一會 ARCHIVE</span>' +
       '<a href="#/">[ 桌面 ]</a>' +
       '<a href="#/authors">[ 名录 ]</a>' +
-      '<span class="dm-right">EST. BY 耶比大雄 · AMOR FATI</span>' +
+      '<span class="dm-teaser" id="dmTeaser"></span><span class="dm-right">EST. BY 耶比大雄 · AMOR FATI</span>' +
       '</div>' +
       '<div class="dleft">' +
       '<div class="dlogo">' + sealSvg() + '<h1><span>一期</span><span>一會</span></h1></div>' +
@@ -203,6 +203,7 @@
     initParallax();
     initFallingStars();
     initAmor();
+    initTeaser();
     window.scrollTo(0, 0);
   }
 
@@ -372,6 +373,166 @@
   }
 
   /* ---------- 活动详情 ---------- */
+  /* ============================================================
+     LOVE LETTER 预告系统（三阶段全自动 · 数据驱动）
+     ============================================================ */
+  function fmtMD(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || '');
+    return m ? (+m[2]) + '.' + (+m[3]) : '';
+  }
+
+  function teaserState() {
+    var t = D.site.teaser;
+    if (!t || !t.reveal_date) return null;
+    var now = Date.now();
+    var rv = new Date(t.reveal_date.replace(' ', 'T')).getTime();
+    var st = new Date(t.event_start.replace(' ', 'T')).getTime();
+    var en = new Date(t.event_end.replace(' ', 'T')).getTime();
+    var DAY = 86400000;
+    var phase = now < rv ? 1 : (now < st ? 2 : (now <= en ? 3 : 0));
+    if (!phase) return null;
+    return {
+      t: t, phase: phase,
+      daysReveal: Math.max(0, Math.ceil((rv - now) / DAY)),
+      daysOpen: Math.max(0, Math.ceil((st - now) / DAY)),
+      progress: Math.min(1, Math.max(0.03, 1 - Math.max(0, Math.ceil((rv - now) / DAY)) / 60))
+    };
+  }
+
+  function teaserStatusText(st) {
+    if (st.phase === 1) return 'NEXT: LOVE LETTER // T-' + st.daysReveal + 'D';
+    if (st.phase === 2) return 'NEXT: LOVE LETTER // T-' + st.daysOpen + 'D';
+    return 'NOW OPEN: LOVE LETTER // ' + fmtMD(st.t.event_start) + '—' + fmtMD(st.t.event_end);
+  }
+
+  function teaserCdText(st) {
+    if (st.phase === 1) return 'T-MINUS ' + st.daysReveal + ' DAYS // REVEAL ' + fmtMD(st.t.reveal_date);
+    if (st.phase === 2) return 'T-MINUS ' + st.daysOpen + ' DAYS // OPEN ' + fmtMD(st.t.event_start);
+    return 'NOW OPEN // ' + fmtMD(st.t.event_start) + '—' + fmtMD(st.t.event_end);
+  }
+
+  /* Event_.txt 末尾的预告/锁定行 */
+  function teaserRowHtml() {
+    var st = teaserState();
+    if (!st) return '';
+    if (st.phase === 1) {
+      return '<div class="wrow tlock"><span class="w-idx">LOCK</span>' +
+        '<span class="w-name">' + esc(st.t.short) + ' // DECRYPTING…</span>' +
+        '<span class="tlock-bar"><i style="width:' + Math.round(st.progress * 100) + '%"></i></span></div>';
+    }
+    return '<div class="wrow" onclick="openTeaserWin()"><span class="w-idx">▶</span>' +
+      '<span class="w-name">' + esc(st.t.name) + '</span>' +
+      '<span class="w-items"><i class="new-dot"></i>NEW</span></div>';
+  }
+
+  window.openTeaserWin = function () {
+    var st = teaserState();
+    if (!st || document.getElementById('teaserWin')) return;
+    window.closeTeaserWin(true);
+    var win = document.createElement('div');
+    win.className = 'teaser-win';
+    win.id = 'teaserWin';
+    var inner = '';
+    if (st.phase === 1) {
+      inner = '<div class="tw-type"><span id="twType"></span><i class="tw-caret"></i></div>' +
+        '<div class="tw-quote">「 ' + esc(st.t.quote) + ' 」</div>' +
+        '<div class="tw-cd" id="twCd">' + esc(teaserCdText(st)) + '</div>';
+    } else {
+      inner = (st.t.poster ? '<div class="tw-poster"><img src="' + esc(st.t.poster) + '" alt="poster"></div>' : '') +
+        '<div class="tw-type"><span>' + esc(st.t.name) + '</span>' + (st.phase === 2 ? '<i class="new-dot tw-new"></i>' : '') + '</div>' +
+        (st.t.announcement_text ? '<div class="tw-announce">' + esc(st.t.announcement_text) + '</div>' :
+          '<div class="tw-quote">「 ' + esc(st.t.quote) + ' 」</div>') +
+        '<div class="tw-cd" id="twCd">' + esc(teaserCdText(st)) + '</div>';
+    }
+    win.innerHTML =
+      '<div class="tw-bar"><span class="tw-file">INCOMING_TRANSMISSION.exe</span>' +
+      '<span class="ww-btns"><i></i><i></i><i class="wx" onclick="closeTeaserWin()"></i></span></div>' +
+      '<div class="tw-body">' + inner + '</div>' +
+      '<div class="tw-foot"><span class="tw-mark" onclick="closeTeaserWin()">MARK THE DATE ←</span></div>';
+    document.body.appendChild(win);
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { win.classList.add('open'); });
+    });
+    /* 打字机（≤2s，点击跳过） */
+    if (st.phase === 1) {
+      var name = st.t.name, pos = 0, done = false;
+      var el = win.querySelector('#twType');
+      var iv = setInterval(function () {
+        if (done) return;
+        pos++;
+        el.textContent = name.slice(0, pos);
+        if (pos >= name.length) { done = true; clearInterval(iv); }
+      }, 28);
+      var skip = function () {
+        if (done) return;
+        done = true; clearInterval(iv);
+        el.textContent = name;
+      };
+      win.addEventListener('click', skip);
+      window.__cleanups.push(function () { clearInterval(iv); });
+    }
+    /* 倒计时逐秒跳动（与状态栏同源） */
+    var cdIv = setInterval(function () {
+      var s2 = teaserState();
+      var cd = document.getElementById('twCd');
+      var dm = document.getElementById('dmTeaser');
+      if (!s2) { clearInterval(cdIv); if (cd) cd.textContent = '—'; return; }
+      if (cd) cd.textContent = teaserCdText(s2);
+      if (dm) dm.textContent = teaserStatusText(s2);
+    }, 1000);
+    window.__cleanups.push(function () { clearInterval(cdIv); });
+  };
+
+  window.closeTeaserWin = function (silent) {
+    var win = document.getElementById('teaserWin');
+    if (win) {
+      win.classList.add('closing');
+      setTimeout(function () { win.remove(); }, 300);
+    }
+    if (!silent) {
+      var mail = document.getElementById('mailIcon');
+      if (mail) mail.classList.add('shown');
+    }
+  };
+
+  function initTeaser() {
+    var st = teaserState();
+    var desk = document.querySelector('.desktop');
+    /* 状态栏常驻（全期） */
+    var dm = document.getElementById('dmTeaser');
+    if (dm) {
+      dm.textContent = st ? teaserStatusText(st) : '';
+      if (st) {
+        var dmIv = setInterval(function () {
+          var s2 = teaserState();
+          if (!s2) { dm.textContent = ''; clearInterval(dmIv); return; }
+          dm.textContent = teaserStatusText(s2);
+        }, 1000);
+        window.__cleanups.push(function () { clearInterval(dmIv); });
+      }
+    }
+    if (!st || !desk) return;
+    /* 桌面信封图标 Mail_.exe */
+    var mail = document.createElement('div');
+    mail.className = 'mail-icon' + (st.phase === 1 ? ' blink' : '');
+    mail.id = 'mailIcon';
+    mail.innerHTML = '<svg width="22" height="16" viewBox="0 0 22 16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><rect x="1" y="1" width="20" height="14"/><path d="M1 3l10 7L21 3"/></svg><span>Mail_.exe</span>';
+    mail.onclick = window.openTeaserWin;
+    desk.appendChild(mail);
+    /* 自动弹窗：每阶段每 session 一次 */
+    var key = 'll_auto_' + st.phase;
+    var seen = false;
+    try { seen = sessionStorage.getItem(key) === '1'; } catch (e) {}
+    if (!seen) {
+      var delay = st.phase === 1 ? 2000 : 1200;
+      var to = setTimeout(function () {
+        try { sessionStorage.setItem(key, '1'); } catch (e) {}
+        window.openTeaserWin();
+      }, delay);
+      window.__cleanups.push(function () { clearTimeout(to); });
+    }
+  }
+
   function worksFiltered(ev) {
     return ev.works.filter(function (w) {
       var okCp = state.cp === '全部' || w.cp === state.cp;
@@ -490,14 +651,17 @@
         rowsHtml += '<div class="tr-strip">' + esc(w.day || w.group) + '</div>';
       }
       var no = String(w.no).padStart(2, '0');
-      var main = w.title
+      var mainTitle = w.title
         ? '《' + w.title + '》'
-        : (w.song ? '♪ ' + w.song : (w.time ? w.time + ' · ' + (w.author || '匿名') : (w.author || '匿名')));
+        : (w.song ? '♪ ' + w.song : (w.time ? w.time : esc(w.author || '匿名')));
+      var authorBit = (w.title || w.song || w.time)
+        ? '<span class="tr-author">— ' + esc(w.author || '匿名') + '</span>'
+        : '';
       rowsHtml += '<div class="tr-row" data-no="' + w.no + '">' +
         '<span class="tr-star">✦</span>' +
         '<span class="tr-cp">CP 索引 // ' + esc(w.cp || '—') + '</span>' +
         '<span class="tr-no">NO.' + no + ' / ' + esc(ev.archive_prefix) + '-AR-' + no + '</span>' +
-        '<span class="tr-main">' + esc(main) + '</span>' +
+        '<span class="tr-main">' + mainTitle + authorBit + '</span>' +
         '<span class="tr-lead"><i></i></span>' +
         '<span class="tr-form">' + esc(w.form) + '</span>' +
         '</div>';

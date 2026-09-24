@@ -1757,3 +1757,88 @@ h1, h2, h3 { font-family: var(--black); font-weight: 900; }
   12%  { opacity: 1; }
   100% { opacity: 0; transform: rotate(-32deg) translate(-190px, 304px); }
 }
+
+/* 登记簿行内作者 */
+.tr-author {
+  font-family: var(--serif); font-size: 12px; letter-spacing: 1px;
+  color: rgba(232,228,220,.5); margin-left: 12px;
+  transition: color .2s ease;
+}
+.tr-row:hover .tr-author { color: rgba(232,228,220,.8); }
+
+/* ============================================================
+   LOVE LETTER 预告系统（三阶段 · 单色 · 唯一暗红 New 点）
+   ============================================================ */
+.dm-teaser { font-size: 10.5px; letter-spacing: 2px; color: #8a8a95; }
+@media (max-width: 860px) { .dm-teaser { display: none; } }
+
+/* 锁定行 + 解密进度 */
+.wrow.tlock { color: #55555e; cursor: default; }
+.wrow.tlock:hover { background: transparent; transform: none; }
+.wrow.tlock .w-name { color: #6a6a75; font-style: italic; }
+.tlock-bar {
+  width: 84px; height: 5px; border: 1px solid #3a3a42; flex-shrink: 0;
+}
+.tlock-bar i { display: block; height: 100%; background: #4a4a52; transition: width .8s ease; }
+
+/* New 红点（全站唯一暗红 #9E2B25） */
+.new-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: #9E2B25; margin-right: 6px; vertical-align: middle;
+}
+.tw-new { margin-left: 8px; }
+
+/* 桌面信封图标 Mail_.exe */
+.mail-icon {
+  position: absolute; z-index: 30;
+  left: 26px; bottom: 22px;
+  display: none; flex-direction: column; align-items: center; gap: 6px;
+  color: #8a8a95; cursor: pointer; opacity: 0;
+  transition: opacity .3s ease;
+}
+.mail-icon.shown { display: flex; opacity: .75; }
+.mail-icon:hover { opacity: 1; }
+.mail-icon span { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; }
+.mail-icon.blink svg { animation: mailBlink 1.6s ease-in-out infinite alternate; }
+@keyframes mailBlink { from { opacity: .35; } to { opacity: 1; } }
+
+/* 来信窗口（≤300×200，右下滑入 300ms） */
+.teaser-win {
+  position: fixed; z-index: 110;
+  right: 22px; bottom: 54px;
+  width: min(300px, 90vw); max-height: 200px;
+  background: #101014; border: 1px solid #3a3a42;
+  box-shadow: inset 0 0 0 1px #0B0B0D, 0 16px 46px rgba(0,0,0,.55);
+  display: flex; flex-direction: column;
+  transform: translateX(112%);
+  transition: transform .3s ease-out, opacity .3s ease;
+}
+.teaser-win.open { transform: translateX(0); }
+.teaser-win.closing { transform: translateY(10px); opacity: 0; }
+.tw-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px; background: #16161b; border-bottom: 1px solid #2c2c33; flex-shrink: 0;
+}
+.tw-file { font-family: var(--mono); font-size: 11.5px; letter-spacing: 1px; color: #b9b9c2; }
+.tw-file::before { content: "▤ "; color: #6a6a75; }
+.tw-body { padding: 14px 16px 10px; overflow-y: auto; color: #c9c9cf; }
+.tw-type { font-family: var(--mono); font-size: 12.5px; letter-spacing: 1px; color: #e8e8ec; cursor: pointer; }
+.tw-caret { display: inline-block; width: 6px; height: 12px; background: #6a6a75; margin-left: 3px; vertical-align: -2px; animation: twCaretw 1s steps(2) infinite; }
+@keyframes twCaretw { 50% { opacity: 0; } }
+.tw-quote { font-family: var(--serif); font-style: italic; font-size: 12.5px; color: rgba(232,228,220,.75); margin-top: 10px; }
+.tw-cd { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.5px; color: #6a6a75; margin-top: 12px; }
+.tw-poster img { width: 100%; max-height: 70px; object-fit: cover; display: block; filter: grayscale(1); margin-bottom: 8px; }
+.tw-announce { font-family: var(--serif); font-size: 12px; line-height: 1.9; color: rgba(232,228,220,.75); margin-top: 8px; }
+.tw-foot { padding: 6px 16px 10px; flex-shrink: 0; }
+.tw-mark {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 2px; color: #8a8a95;
+  cursor: pointer; border-bottom: 1px dashed #3a3a42; padding-bottom: 2px;
+}
+.tw-mark:hover { color: #e8e8ec; }
+
+/* 移动端：底部滑入纸条 + 信封固定右下角 */
+@media (max-width: 860px) {
+  .teaser-win { left: 0; right: 0; bottom: 0; width: 100%; max-height: 46vh; transform: translateY(112%); }
+  .teaser-win.open { transform: translateY(0); }
+  .mail-icon { position: fixed; left: auto; right: 14px; bottom: 14px; z-index: 100; }
+}
