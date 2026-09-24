@@ -954,10 +954,11 @@ h1, h2, h3 { font-family: var(--black); font-weight: 900; }
 .dleft {
   position: absolute; z-index: 5;
   left: 6vw; top: 47%;
-  transform: translateY(-50%);
+  transform: translate(var(--px, 0px), calc(-50% + var(--py, 0px)));
   max-width: 340px;
+  will-change: transform;
 }
-.dlogo { display: flex; align-items: center; gap: 16px; }
+.dlogo { display: flex; align-items: baseline; gap: 0.4em; }
 .dlogo h1 {
   font-family: var(--mono); font-weight: 700;
   font-size: clamp(44px, 6.5vw, 84px);
@@ -1700,4 +1701,57 @@ h1, h2, h3 { font-family: var(--black); font-weight: 900; }
   .ww-body { flex-direction: column; gap: 18px; padding: 20px; }
   .ww-right { width: 100%; }
   .ww-seals { position: static; margin-top: 20px; justify-content: flex-end; }
+}
+
+/* ============================================================
+   WAX SEAL 火漆印 logo · 落星 · 流星雨 · 视差
+   ============================================================ */
+/* 火漆印：currentColor 70% 透明度暖白，基线对齐，-3°，仅此一处 */
+.dlogo-icon.seal {
+  flex-shrink: 0;
+  opacity: .7;
+  transform: rotate(-3deg);
+  transform-origin: 50% 88%;
+  transition: transform .15s ease-out, opacity .15s ease-out;
+  animation: sealIn .25s ease-out both;
+}
+@keyframes sealIn {
+  from { transform: rotate(-3deg) scale(1.2); opacity: 0; }
+  to   { transform: rotate(-3deg) scale(1); opacity: .7; }
+}
+.dlogo:hover .dlogo-icon.seal {
+  transform: rotate(-3deg) scale(.92);
+  opacity: 1;
+}
+
+/* 视差星空层 */
+.dstars { will-change: transform; }
+
+/* 落星：亮起80ms → 闪烁两次(各400ms) → 淡出1.6s，共2.5s */
+.spawn-star { position: fixed; z-index: 80; pointer-events: none; animation: starLife 2.5s ease forwards; }
+.spawn-star svg { display: block; }
+@keyframes starLife {
+  0%   { opacity: 0; }
+  3.2% { opacity: 1; }
+  18%  { opacity: .25; }
+  34%  { opacity: 1; }
+  50%  { opacity: .25; }
+  64%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.spawn-star.early { animation: none; opacity: 0; transition: opacity .4s ease; }
+
+/* 流星雨（amor 彩蛋，1.5s） */
+.meteors { position: fixed; inset: 0; z-index: 70; pointer-events: none; overflow: hidden; }
+.meteor {
+  position: absolute; width: 64px; height: 1px;
+  background: linear-gradient(90deg, rgba(232,228,220,.85), rgba(232,228,220,0));
+  transform: rotate(-32deg);
+  opacity: 0;
+  animation: meteorFly var(--d, .7s) linear var(--dl, 0s) forwards;
+}
+@keyframes meteorFly {
+  0%   { opacity: 0; transform: rotate(-32deg) translate(0, 0); }
+  12%  { opacity: 1; }
+  100% { opacity: 0; transform: rotate(-32deg) translate(-190px, 304px); }
 }

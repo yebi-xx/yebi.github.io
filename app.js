@@ -122,19 +122,12 @@
   /* ============================================================
      首页 · 复古电脑桌面（RETRO DESKTOP）
      ============================================================ */
-  function pixelFolderSvg() {
-    return '<svg class="dlogo-icon" width="40" height="34" viewBox="0 0 20 17" shape-rendering="crispEdges">' +
-      '<rect x="1" y="3" width="18" height="13" fill="#c9c9cf"/>' +
-      '<rect x="1" y="3" width="18" height="1" fill="#eeeeF2"/>' +
-      '<rect x="1" y="15" width="18" height="1" fill="#55555e"/>' +
-      '<rect x="1" y="3" width="1" height="13" fill="#eeeeF2"/>' +
-      '<rect x="18" y="3" width="1" height="13" fill="#55555e"/>' +
-      '<rect x="2" y="1" width="8" height="3" fill="#c9c9cf"/>' +
-      '<rect x="2" y="1" width="8" height="1" fill="#eeeeF2"/>' +
-      '<rect x="3" y="6" width="14" height="8" fill="#0B0B0D"/>' +
-      '<rect x="4" y="7" width="6" height="1" fill="#8a8a95"/>' +
-      '<rect x="4" y="9" width="10" height="1" fill="#6a6a75"/>' +
-      '<rect x="4" y="11" width="8" height="1" fill="#55555e"/>' +
+  function sealSvg(cls) {
+    /* 手绘线稿火漆印：不规则蜡封边缘 + 内圈 + 四角星浮雕，1px 线宽 */
+    return '<svg class="dlogo-icon seal ' + (cls || '') + '" width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" aria-hidden="true">' +
+      '<path stroke-width="1" d="M15 1.9c2.5-.3 4.8.8 6.7 1.7 1.9.8 3.7 1.9 4.7 3.7 1 1.8.7 3.9 1 5.9.3 2 .9 3.9.2 5.8-.7 2-2.3 3.2-3.8 4.5-1.5 1.3-3.1 2.6-5.1 2.7-1.9.1-3.7-.9-5.5-1.4-1.8-.5-3.8-.5-5.3-1.6-1.5-1.1-2.3-3-2.9-4.8-.7-1.8-1.7-3.5-1.3-5.4.4-1.9 1.9-3.3 3.1-4.7 1.2-1.5 2.1-3.4 3.8-4.3 1.7-.9 3.6-.3 5.4-.4z"/>' +
+      '<circle cx="15" cy="15" r="10.2" stroke-width="1"/>' +
+      '<path stroke-width="1" d="M15 9.6l1.5 3.9 3.9 1.5-3.9 1.5-1.5 3.9-1.5-3.9-3.9-1.5 3.9-1.5z"/>' +
       '</svg>';
   }
 
@@ -194,7 +187,7 @@
       '<span class="dm-right">EST. BY 耶比大雄 · AMOR FATI</span>' +
       '</div>' +
       '<div class="dleft">' +
-      '<div class="dlogo">' + pixelFolderSvg() + '<h1>一期一會</h1></div>' +
+      '<div class="dlogo">' + sealSvg() + '<h1>一期一會</h1></div>' +
       '<div class="dsub">After the Curtain Call</div>' +
       '<div class="ddash"><em></em><span>✦</span></div>' +
       '<div class="damor">' + esc(D.site.subtitle) + '<span> — ' + esc(D.site.subtitleNote) + '</span></div>' +
@@ -207,7 +200,120 @@
 
     makeStarsIn(document.getElementById('dstars'));
     initDrag();
+    initParallax();
+    initFallingStars();
+    initAmor();
     window.scrollTo(0, 0);
+  }
+
+  /* ---------- 减弱动态偏好 ---------- */
+  function reducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  /* ---------- 视差层（桌面端 only，lag 0.08） ---------- */
+  function initParallax() {
+    if (reducedMotion()) return;
+    if (!window.matchMedia('(min-width: 861px) and (hover: hover)').matches) return;
+    var stars = document.querySelector('.dstars');
+    var left = document.querySelector('.dleft');
+    if (!stars || !left) return;
+    var tx = 0, ty = 0, cx = 0, cy = 0, raf = null;
+    function onMove(e) {
+      tx = (e.clientX / window.innerWidth - 0.5) * 2;
+      ty = (e.clientY / window.innerHeight - 0.5) * 2;
+    }
+    function loop() {
+      cx += (tx - cx) * 0.08;
+      cy += (ty - cy) * 0.08;
+      stars.style.transform = 'translate3d(' + (cx * 10).toFixed(2) + 'px,' + (cy * 10).toFixed(2) + 'px,0)';
+      left.style.setProperty('--px', (-cx * 4).toFixed(2) + 'px');
+      left.style.setProperty('--py', (-cy * 4).toFixed(2) + 'px');
+      raf = requestAnimationFrame(loop);
+    }
+    document.addEventListener('mousemove', onMove);
+    raf = requestAnimationFrame(loop);
+    window.__cleanups.push(function () {
+      document.removeEventListener('mousemove', onMove);
+      if (raf) cancelAnimationFrame(raf);
+    });
+  }
+
+  /* ---------- 落星交互（全端，≤30 颗同活） ---------- */
+  var aliveStars = [];
+  function spawnStar(x, y) {
+    if (reducedMotion()) return;
+    var el = document.createElement('div');
+    el.className = 'spawn-star';
+    var size = 3 + Math.random() * 3;
+    var rot = (Math.random() * 30 - 15).toFixed(1);
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.innerHTML = '<svg width="' + size.toFixed(1) + '" height="' + size.toFixed(1) + '" viewBox="0 0 12 12" style="transform:rotate(' + rot + 'deg)"><path d="M6 .8l1.3 3.9 3.9 1.3-3.9 1.3L6 11.2 4.7 7.3.8 6l3.9-1.3z" fill="#E8E4DC"/></svg>';
+    document.body.appendChild(el);
+    aliveStars.push(el);
+    if (aliveStars.length > 30) {
+      var oldest = aliveStars.shift();
+      oldest.classList.add('early');
+      setTimeout(function () { if (oldest.parentNode) oldest.remove(); }, 420);
+    }
+    setTimeout(function () {
+      var i = aliveStars.indexOf(el);
+      if (i > -1) aliveStars.splice(i, 1);
+      if (el.parentNode) el.remove();
+    }, 2600);
+  }
+
+  function initFallingStars() {
+    if (reducedMotion()) return;
+    var desktopEl = document.querySelector('.desktop');
+    if (!desktopEl) return;
+    function onTap(e) {
+      var t = e.target;
+      if (t.closest && t.closest('a, button, .win, .dmenu')) return;
+      spawnStar(e.clientX, e.clientY);
+    }
+    desktopEl.addEventListener('click', onTap);
+    window.__cleanups.push(function () {
+      desktopEl.removeEventListener('click', onTap);
+    });
+  }
+
+  /* ---------- 彩蛋：a-m-o-r 流星雨（1.5s） ---------- */
+  function meteorShower() {
+    if (reducedMotion()) return;
+    if (document.querySelector('.meteors')) return;
+    var box = document.createElement('div');
+    box.className = 'meteors';
+    for (var i = 0; i < 10; i++) {
+      var m = document.createElement('i');
+      m.className = 'meteor';
+      m.style.top = (4 + Math.random() * 32) + '%';
+      m.style.left = (35 + Math.random() * 60) + '%';
+      m.style.setProperty('--dl', (i * 0.11 + Math.random() * 0.08).toFixed(2) + 's');
+      m.style.setProperty('--d', (0.55 + Math.random() * 0.3).toFixed(2) + 's');
+      box.appendChild(m);
+    }
+    document.body.appendChild(box);
+    setTimeout(function () { box.remove(); }, 1700);
+  }
+
+  function initAmor() {
+    if (reducedMotion()) return;
+    var buf = '';
+    function onKey(e) {
+      if (e.key && e.key.length === 1) {
+        buf = (buf + e.key.toLowerCase()).slice(-4);
+        if (buf === 'amor') {
+          buf = '';
+          meteorShower();
+        }
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    window.__cleanups.push(function () {
+      document.removeEventListener('keydown', onKey);
+    });
   }
 
   /* 星点：细碎 + 闪烁 */
@@ -742,8 +848,15 @@
   }
 
   /* ---------- 路由 ---------- */
+  window.__cleanups = window.__cleanups || [];
   function route() {
     if (suppressRoute) { suppressRoute = false; return; }
+    /* 清理上一页的全局监听（视差/落星/彩蛋） */
+    for (var i = 0; i < window.__cleanups.length; i++) {
+      try { window.__cleanups[i](); } catch (err) {}
+    }
+    window.__cleanups = [];
+    aliveStars = [];
     var h = location.hash || '#/';
     if (h.indexOf('#/event/') === 0) renderEvent(h.slice(8));
     else if (h === '#/authors') renderAuthors();
